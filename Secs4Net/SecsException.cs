@@ -9,7 +9,7 @@ namespace Secs4Net {
 
         protected SecsException(SerializationInfo info, StreamingContext context)
             : base(info, context) {
-            this.SecsMsg = info.GetValue("msg", typeof(SecsMessage)) as SecsMessage;
+            SecsMsg = info.GetValue("msg", typeof(SecsMessage)) as SecsMessage;
         }
 
         public SecsException(SecsMessage msg, string description)

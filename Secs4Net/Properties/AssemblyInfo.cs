@@ -7,11 +7,11 @@ using System;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Secs4Net")]
-[assembly: AssemblyDescription("SECSII Driver On HSMS Implement(.NET 2.0) ,LittleEndian")]
+[assembly: AssemblyDescription("SECSII Driver On HSMS Implement,LittleEndian")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("mkjeff@gmail.com")]
+[assembly: AssemblyCompany("mkjeff@outlook.com")]
 [assembly: AssemblyProduct("Secs4Net")]
-[assembly: AssemblyCopyright("Copyright © dogmouse 2010")]
+[assembly: AssemblyCopyright("Copyright © dogmouse 2015")]
 [assembly: AssemblyTrademark("Dogmouse")]
 [assembly: AssemblyCulture("")]
 
@@ -33,5 +33,5 @@ using System;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("2.0.0.0")]
-[assembly: AssemblyFileVersion("2.0.0.0")]
+[assembly: AssemblyVersion("3.0.0.0")]
+[assembly: AssemblyFileVersion("3.0.0.0")]

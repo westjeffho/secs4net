@@ -5,6 +5,10 @@ using System.Globalization;
 using System.IO;
 using System.Collections.Concurrent;
 using static Secs4Net.Item;
+using System.Threading.Tasks;
+using System.Threading;
+using System.Reactive.Linq;
+
 namespace Secs4Net {
     public static class SecsMessageExtenstion {
         const int SmlIndent = 2;
@@ -79,6 +83,89 @@ namespace Secs4Net {
                 return sr.ToSecsMessage();
         }
 
+        public static IObservable<SecsMessage> ParseSmlFile(string filename) =>
+            Observable.Create<SecsMessage>(async io =>
+            {
+                using (var reader = new FileInfo(filename).OpenText())
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        try
+                        {
+                            io.OnNext(await reader.ToSecsMessageAsync());
+                        }
+                        catch (Exception ex)
+                        {
+                            io.OnError(new Exception("SML parsing error before:\n" + reader.ReadToEnd(), ex));
+                        }
+                    }
+                    io.OnCompleted();
+                }
+                return () => { };
+            });
+
+        public static async Task<SecsMessage> ToSecsMessageAsync(this TextReader sr)
+        {
+            string line = await sr.ReadLineAsync();
+            #region Parse First Line
+            int i = line.IndexOf(':');
+
+            var name = line.Substring(0, i);
+
+            i = line.IndexOf("'S", i + 1) + 2;
+            int j = line.IndexOf('F', i);
+            var s = byte.Parse(line.Substring(i, j - i));
+
+            i = line.IndexOf('\'', j);
+            var f = byte.Parse(line.Substring(j + 1, i - (j + 1)));
+
+            var replyExpected = line.IndexOf('W', i) != -1;
+            #endregion
+            Item rootItem = null;
+            var stack = new Stack<List<Item>>();
+            while ((line = await sr.ReadLineAsync()) != null)
+            {
+                line = line.TrimStart();
+                if (line[0] == '>')
+                {
+                    var itemList = stack.Pop();
+                    var item = itemList.Count > 0 ? Item.L(itemList) : Item.L();
+                    if (stack.Count > 0)
+                        stack.Peek().Add(item);
+                    else
+                        rootItem = item;
+                    continue;
+                }
+                if (line[0] == '.') break;
+
+                #region <format[count] smlValue
+                int index_Item_L = line.IndexOf('<') + 1; //Debug.Assert(index_Item_L != 0);
+                int index_Size_L = line.IndexOf('[', index_Item_L); //Debug.Assert(index_Size_L != -1);
+                string format = line.Substring(index_Item_L, index_Size_L - index_Item_L).Trim();
+
+
+                if (format == "L")
+                {
+                    stack.Push(new List<Item>());
+                    continue;
+                }
+                else
+                {
+                    int index_Size_R = line.IndexOf(']', index_Size_L); //Debug.Assert(index_Size_R != -1);
+                    int index_Item_R = line.LastIndexOf('>'); //Debug.Assert(index_Item_R != -1);
+                    string valueStr = line.Substring(index_Size_R + 1, index_Item_R - index_Size_R - 1);
+                    var item = Create(format, valueStr);
+                    if (stack.Count > 0)
+                        stack.Peek().Add(item);
+                    else
+                        rootItem = item;
+                }
+                #endregion
+            }
+
+            return new SecsMessage(s, f, replyExpected, name, rootItem);
+        }
+
         public static SecsMessage ToSecsMessage(this TextReader sr) {
             string line = sr.ReadLine();
             #region Parse First Line
@@ -132,7 +219,7 @@ namespace Secs4Net {
                 #endregion
             }
 
-            return new SecsMessage(s, f, name, replyExpected, rootItem);
+            return new SecsMessage(s, f, replyExpected, name, rootItem);
         }
 
         static readonly Func<string, Item> SmlParser_A = CreateSmlParser(A, A);
@@ -151,7 +238,7 @@ namespace Secs4Net {
         static readonly Func<string, Item> SmlParser_F8 = CreateSmlParser(F8, F8, double.Parse);
         static readonly ConcurrentDictionary<string, Item> Cache = new ConcurrentDictionary<string, Item>();
 
-        static byte HexStringToByte(string str) => byte.Parse(str, NumberStyles.HexNumber);
+        static byte HexStringToByte(string str) => str.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? Convert.ToByte(str, 16) : byte.Parse(str);
 
         static Func<string, Item> CreateSmlParser(Func<string, Item> itemCreator, Func<Item> emptyCreator) => valueStr =>
                  Cache.GetOrAdd(valueStr, str =>

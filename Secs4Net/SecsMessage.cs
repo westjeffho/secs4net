@@ -24,7 +24,7 @@ namespace Secs4Net {
             return lease;
         }
 
-        public override string ToString() => $"{Name ?? "Unknown"} : 'S{S}F{F}' {(ReplyExpected ? " W" : string.Empty)}";
+        public override string ToString() => $"{Name ?? string.Empty} : 'S{S}F{F}' {(ReplyExpected ? " W" : string.Empty)}";
 
         public byte S { get; }
         public byte F { get; }
@@ -39,17 +39,19 @@ namespace Secs4Net {
         static readonly Lazy<ReadOnlyCollection<RawData>> emptyMsgDatas = Lazy.Create(new List<RawData> { new RawData(new byte[] { 0, 0, 0, 10 }), null }.AsReadOnly());
         #region Constructor
 
-        public SecsMessage(byte s, byte f, string name, bool replyExpected, Item item) {
+        public SecsMessage(byte s, byte f, bool replyExpected = true, string name = null, Item item = null)
+        {
             if (s > 0x7F)
                 throw new ArgumentOutOfRangeException(nameof(s), s, "Stream number must be less than 127");
 
-            this.S = s;
-            this.F = f;
-            this.Name = name;
-            this.ReplyExpected = replyExpected;
-            this.SecsItem = item;
+            S = s;
+            F = f;
+            Name = name;
+            ReplyExpected = replyExpected;
+            SecsItem = item;
 
-            this._rawDatas = item == null ? emptyMsgDatas : Lazy.Create(() => {
+            _rawDatas = item == null ? emptyMsgDatas : Lazy.Create(() =>
+            {
                 var result = new List<RawData> { null, dummyHeaderDatas };
                 uint length = 10 + SecsItem.Encode(result);
                 byte[] msgLengthByte = BitConverter.GetBytes(length);
@@ -59,37 +61,35 @@ namespace Secs4Net {
             });
         }
 
-        public SecsMessage(byte s, byte f, string name, Item item)
-            : this(s, f, name, true, item) { }
-
-        public SecsMessage(byte s, byte f, string name)
-            : this(s, f, name, null) { }
+        public SecsMessage(byte s, byte f, string name, Item item = null)
+            : this(s, f, true, name, item)
+        { }
 
         internal SecsMessage(byte s, byte f, bool replyExpected, byte[] itemBytes, ref int index)
-            : this(s, f, "Unknown", replyExpected, Decode(itemBytes, ref index)) { }
+            : this(s, f, replyExpected, string.Empty, Decode(itemBytes, ref index))
+        { }
 
         #endregion
         #region ISerializable Members
-        SecsMessage(SerializationInfo info, StreamingContext context) {
-            this.S = info.GetByte("s");
-            this.F = info.GetByte("f");
-            this.ReplyExpected = info.GetBoolean("w");
-            this.Name = info.GetString("name");
-            this._rawDatas = Lazy.Create(info.GetValue("rawbytes", typeof(ReadOnlyCollection<RawData>)) as ReadOnlyCollection<RawData>);
+        SecsMessage(SerializationInfo info, StreamingContext context)
+        {
+            S = info.GetByte(nameof(S));
+            F = info.GetByte(nameof(F));
+            ReplyExpected = info.GetBoolean(nameof(ReplyExpected));
+            Name = info.GetString(nameof(Name));
+            _rawDatas = Lazy.Create(info.GetValue(nameof(_rawDatas), typeof(ReadOnlyCollection<RawData>)) as ReadOnlyCollection<RawData>);
             int i = 0;
-            if (this._rawDatas.Value.Count > 2)
-                this.SecsItem = Decode((from arr in this._rawDatas.Value.Skip(2)
-                                        from b in arr.Bytes
-                                        select b).ToArray(), ref i);
+            if (_rawDatas.Value.Count > 2)
+                SecsItem = Decode(_rawDatas.Value.Skip(2).SelectMany(arr => arr.Bytes).ToArray(), ref i);
         }
 
         [SecurityPermission(SecurityAction.LinkDemand, SerializationFormatter = true)]
         void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context) {
-            info.AddValue("s", this.S);
-            info.AddValue("f", this.F);
-            info.AddValue("w", this.ReplyExpected);
-            info.AddValue("name", this.Name);
-            info.AddValue("rawbytes", _rawDatas.Value);
+            info.AddValue(nameof(S), S);
+            info.AddValue(nameof(F), F);
+            info.AddValue(nameof(ReplyExpected), ReplyExpected);
+            info.AddValue(nameof(Name), Name);
+            info.AddValue(nameof(_rawDatas), _rawDatas.Value);
         }
         #endregion
 

@@ -71,7 +71,7 @@ namespace Secs4Net {
         static char GetHexValue(int i) => (i < 10) ? (char)(i + 0x30) : (char)((i - 10) + 0x41);
 
         internal static string ToSmlString<T>(this T[] value) where T : struct => 
-            value.Length == 1 ? value[0].ToString() : string.Join(" ", Array.ConvertAll(value, v => v.ToString()));
+            value.Length == 1 ? value[0].ToString() : string.Join(" ", value);
         #endregion
 
         internal static void Reverse(this byte[] bytes, int begin, int end, int offSet) {
